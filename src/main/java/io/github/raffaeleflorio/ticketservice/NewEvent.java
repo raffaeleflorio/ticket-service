@@ -13,7 +13,7 @@ public interface NewEvent {
    * Updates a collection of event
    *
    * @param events The events to update
-   * @return Nothing or failure
+   * @return Nothing
    */
   Uni<Void> update(Events events);
 }

@@ -15,7 +15,16 @@ public interface Events {
 
   /**
    * Adds an event to itself given a JSON description.
-   * The description must have: externalId, origin, title, description, poster, date, maxTickets
+   * The description must have:
+   * <ul>
+   *  <li>title: the event's title as string</li>
+   *  <li>description: the event's description as string</li>
+   *  <li>poster: the event's poster as URL</li>
+   *  <li>date: the event's date as ISO-8601 datetime in UTC</li>
+   *  <li>maxTickets: the event's max tickets as integer</li>
+   *  <li>origin: the event's origin as string. That is who are adding it (e.g. BUTTER)</li>
+   *  <li>externalId: the event's external id. That is the id used by the origin</li>
+   * </ul>
    *
    * @param event The description to create the event
    * @return The added event

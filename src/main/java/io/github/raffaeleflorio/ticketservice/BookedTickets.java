@@ -14,9 +14,9 @@ public interface BookedTickets {
    * Adds a ticket to itself
    *
    * @param ticket      The ticket's id
-   * @param participant The partecipant's id
+   * @param participant The participant's id
    * @param event       The event's id
-   * @return Nothing or failure
+   * @return Nothing
    */
   Uni<Void> add(UUID ticket, UUID participant, UUID event);
 }
