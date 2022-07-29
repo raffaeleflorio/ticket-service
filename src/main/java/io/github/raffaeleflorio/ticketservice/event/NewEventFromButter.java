@@ -48,7 +48,7 @@ final class NewEventFromButter implements NewEvent {
       )
       .onItem().transform(JsonObjectBuilder::build)
       .onItem().transformToUni(events::event)
-      .replaceWithVoid();
+      .onItem().ignore().andContinueWithNull();
   }
 
   private String slug(final JsonObject eventData) {
