@@ -42,7 +42,7 @@ public final class EventsResource {
   }
 
   @POST
-  @Path("/{id}/ticket")
+  @Path("/{id}/tickets")
   public Uni<RestResponse<Void>> bookTicket(
     @PathParam("id") final UUID id,
     @HeaderParam("participant") final UUID participant
