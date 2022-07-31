@@ -1,7 +1,7 @@
 # ticket-service
 
-This is a demo project that integrates [ButterCMS](https://buttercms.com) with Quarkus. It mimics an event ticketing
-platform.
+This is a demo project that integrates [ButterCMS](https://buttercms.com) with [Quarkus](https://quarkus.io).
+It mimics a ticketing platform on which clients can book tickets for events added by editor through Butter.
 
 ## Running the application in dev mode
 
