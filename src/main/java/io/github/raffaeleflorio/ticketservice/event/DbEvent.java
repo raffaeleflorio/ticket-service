@@ -9,6 +9,7 @@ import io.smallrye.mutiny.tuples.Tuple2;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -52,11 +53,15 @@ final class DbEvent implements Event {
 
   @Override
   public Uni<JsonObject> asJsonObject() {
-    try (var preparedStatement = this.preparedStatement(
-      "SELECT ID, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, SOLD_TICKETS",
-      "FROM EVENTS",
-      "WHERE ID=?"
-    )) {
+    try (
+      var connection = this.dataSource.getConnection();
+      var preparedStatement = this.preparedStatement(
+        connection,
+        "SELECT ID, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, SOLD_TICKETS",
+        "FROM EVENTS",
+        "WHERE ID=?"
+      )
+    ) {
       preparedStatement.setObject(1, this.id);
       return this.asJsonObject(preparedStatement.executeQuery());
     } catch (SQLException e) {
@@ -64,9 +69,11 @@ final class DbEvent implements Event {
     }
   }
 
-  private PreparedStatement preparedStatement(final String... preparedStatementPieces) throws SQLException {
-    return this.dataSource.getConnection()
-      .prepareStatement(String.join(" ", preparedStatementPieces));
+  private PreparedStatement preparedStatement(
+    final Connection connection,
+    final String... preparedStatementPieces
+  ) throws SQLException {
+    return connection.prepareStatement(String.join(" ", preparedStatementPieces));
   }
 
 
@@ -89,7 +96,9 @@ final class DbEvent implements Event {
   @Override
   public Uni<UUID> book(final UUID participant) {
     try (
+      var connection = this.dataSource.getConnection();
       var preparedStatement = this.preparedStatement(
+        connection,
         "UPDATE EVENTS",
         "SET SOLD_TICKETS = SOLD_TICKETS + 1",
         "WHERE ID=? AND SOLD_TICKETS < MAX_TICKETS AND EVENT_TIMESTAMP >= NOW()"
@@ -111,11 +120,15 @@ final class DbEvent implements Event {
 
   @Override
   public Multi<String> externalId(final String origin) {
-    try (var preparedStatement = this.preparedStatement(
-      "SELECT EXTERNAL_ID",
-      "FROM EVENTS",
-      "WHERE ID=? AND ORIGIN=?"
-    )) {
+    try (
+      var connection = this.dataSource.getConnection();
+      var preparedStatement = this.preparedStatement(
+        connection,
+        "SELECT EXTERNAL_ID",
+        "FROM EVENTS",
+        "WHERE ID=? AND ORIGIN=?"
+      )
+    ) {
       preparedStatement.setObject(1, this.id);
       preparedStatement.setObject(2, origin);
       var rs = preparedStatement.executeQuery();

@@ -10,6 +10,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.*;
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -63,21 +64,26 @@ final class DbEvents implements Events {
 
   @Override
   public Uni<Event> event(final JsonObject event) {
-    try (var preparedStatement = this.preparedStatement(
-      "INSERT INTO EVENTS",
-      "(ID, EXTERNAL_ID, ORIGIN, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS)",
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )) {
+    try (
+      var connection = this.dataSource.getConnection();
+      var preparedStatement = this.preparedStatement(
+        connection,
+        "INSERT INTO EVENTS",
+        "(ID, EXTERNAL_ID, ORIGIN, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS)",
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+    ) {
       return this.event(preparedStatement, event);
     } catch (SQLException e) {
       return Uni.createFrom().failure(new RuntimeException(e));
     }
   }
 
-  private PreparedStatement preparedStatement(final String... preparedStatementPieces) throws SQLException {
-    return this.dataSource
-      .getConnection()
-      .prepareStatement(String.join(" ", preparedStatementPieces));
+  private PreparedStatement preparedStatement(
+    final Connection connection,
+    final String... preparedStatementPieces
+  ) throws SQLException {
+    return connection.prepareStatement(String.join(" ", preparedStatementPieces));
   }
 
   private Uni<Event> event(final PreparedStatement preparedStatement, final JsonObject event) throws SQLException {
@@ -99,7 +105,10 @@ final class DbEvents implements Events {
 
   @Override
   public Uni<JsonObject> asJsonObject() {
-    try (var preparedStatement = this.preparedStatement(this.eventsSelectQuery)) {
+    try (
+      var connection = this.dataSource.getConnection();
+      var preparedStatement = this.preparedStatement(connection, this.eventsSelectQuery);
+    ) {
       return this.asJsonArray(preparedStatement.executeQuery())
         .onItem().transform(jsonArray -> Json.createObjectBuilder().add("events", jsonArray))
         .onItem().transform(JsonObjectBuilder::build);
@@ -125,10 +134,14 @@ final class DbEvents implements Events {
 
   @Override
   public Multi<Event> event(final UUID id) {
-    try (var preparedStatement = this.preparedStatement(
-      this.eventsSelectQuery,
-      this.eventsSelectQuery.contains(" WHERE ") ? "AND ID=?" : "WHERE ID=?"
-    )) {
+    try (
+      var connection = this.dataSource.getConnection();
+      var preparedStatement = this.preparedStatement(
+        connection,
+        this.eventsSelectQuery,
+        this.eventsSelectQuery.contains(" WHERE ") ? "AND ID=?" : "WHERE ID=?"
+      )
+    ) {
       preparedStatement.setObject(1, id);
       return this.event(preparedStatement.executeQuery());
     } catch (SQLException e) {
