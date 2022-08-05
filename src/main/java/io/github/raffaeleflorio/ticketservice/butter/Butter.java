@@ -1,6 +1,5 @@
-package io.github.raffaeleflorio.ticketservice;
+package io.github.raffaeleflorio.ticketservice.butter;
 
-import io.github.raffaeleflorio.ticketservice.butter.security.WriteTokenApiHeadersFactory;
 import io.smallrye.mutiny.Uni;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;

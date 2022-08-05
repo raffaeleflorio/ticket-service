@@ -10,6 +10,7 @@ import java.util.UUID;
  * @author Raffaele Florio (raffaeleflorio@protonmail.com)
  */
 public interface BookedTickets {
+
   /**
    * Adds a ticket to itself
    *

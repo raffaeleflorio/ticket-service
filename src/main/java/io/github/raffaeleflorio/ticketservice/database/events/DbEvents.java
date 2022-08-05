@@ -1,4 +1,4 @@
-package io.github.raffaeleflorio.ticketservice.event;
+package io.github.raffaeleflorio.ticketservice.database.events;
 
 import io.github.raffaeleflorio.ticketservice.BookedTickets;
 import io.github.raffaeleflorio.ticketservice.Event;

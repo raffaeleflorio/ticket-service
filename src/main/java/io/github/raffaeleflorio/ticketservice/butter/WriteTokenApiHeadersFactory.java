@@ -1,4 +1,4 @@
-package io.github.raffaeleflorio.ticketservice.butter.security;
+package io.github.raffaeleflorio.ticketservice.butter;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.ext.ClientHeadersFactory;
@@ -13,7 +13,7 @@ import javax.ws.rs.core.MultivaluedMap;
  * @author Raffaele Florio (raffaeleflorio@protonmail.com)
  */
 @ApplicationScoped
-public final class WriteTokenApiHeadersFactory implements ClientHeadersFactory {
+final class WriteTokenApiHeadersFactory implements ClientHeadersFactory {
 
   private final String token;
 

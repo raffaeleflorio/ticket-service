@@ -1,6 +1,6 @@
-package io.github.raffaeleflorio.ticketservice.event;
+package io.github.raffaeleflorio.ticketservice.butter.newevent;
 
-import io.github.raffaeleflorio.ticketservice.Butter;
+import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.github.raffaeleflorio.ticketservice.NewEvent;
 import io.smallrye.mutiny.Uni;

@@ -1,4 +1,4 @@
-package io.github.raffaeleflorio.ticketservice.butter.security;
+package io.github.raffaeleflorio.ticketservice.butter;
 
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;

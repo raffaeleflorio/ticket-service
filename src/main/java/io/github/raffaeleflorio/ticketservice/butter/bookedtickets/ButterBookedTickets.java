@@ -1,7 +1,7 @@
-package io.github.raffaeleflorio.ticketservice.bookedtickets;
+package io.github.raffaeleflorio.ticketservice.butter.bookedtickets;
 
 import io.github.raffaeleflorio.ticketservice.BookedTickets;
-import io.github.raffaeleflorio.ticketservice.Butter;
+import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
