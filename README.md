@@ -3,6 +3,12 @@
 This is a demo project that integrates [ButterCMS](https://buttercms.com) with [Quarkus](https://quarkus.io).
 It mimics a ticketing platform on which clients can book tickets for events added by editor through Butter.
 
+# Architecture
+
+The system is organised around Butter and the service that allows clients to book tickets:
+
+![The system architecture that shows that Butter communicates with the ticket-service through webhook. It also exposes that the service has a Events database and that it communicates with Butter through REST API.](./architecture.drawio.svg)
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
