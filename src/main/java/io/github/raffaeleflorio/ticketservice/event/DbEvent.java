@@ -94,7 +94,7 @@ final class DbEvent implements Event {
   }
 
   @Override
-  public Uni<UUID> book(final UUID participant) {
+  public Uni<UUID> ticket(final UUID participant) {
     try (
       var connection = this.dataSource.getConnection();
       var preparedStatement = this.preparedStatement(

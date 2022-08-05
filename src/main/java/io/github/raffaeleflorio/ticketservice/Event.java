@@ -34,5 +34,5 @@ public interface Event {
    * @param participant The participant id
    * @return The ticket's id
    */
-  Uni<UUID> book(UUID participant);
+  Uni<UUID> ticket(UUID participant);
 }

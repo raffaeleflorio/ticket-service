@@ -48,7 +48,7 @@ public final class EventsResource {
     @HeaderParam("participant") final UUID participant
   ) {
     return this.events.available().event(id)
-      .onItem().transformToUniAndMerge(event -> event.book(participant))
+      .onItem().transformToUniAndMerge(event -> event.ticket(participant))
       .onItem().transform(ticketId -> RestResponse.<Void>accepted())
       .onFailure().recoverWithItem(() -> RestResponse.status(409))
       .onCompletion().ifEmpty().continueWith(RestResponse.notFound())
