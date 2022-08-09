@@ -13,18 +13,18 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import java.util.function.Function;
 
-@Path("/events")
-public final class EventsResource {
+@Path("/butter/events")
+public final class ButterEventsResource {
 
   private final Events events;
   private final Function<JsonObject, NewEvent> newEventFn;
 
   @Inject
-  public EventsResource(final Events events, @RestClient final Butter butter) {
+  public ButterEventsResource(final Events events, @RestClient final Butter butter) {
     this(events, notification -> new NewEventFromButterWebHook(notification, butter));
   }
 
-  EventsResource(final Events events, final Function<JsonObject, NewEvent> newEventFn) {
+  ButterEventsResource(final Events events, final Function<JsonObject, NewEvent> newEventFn) {
     this.events = events;
     this.newEventFn = newEventFn;
   }
