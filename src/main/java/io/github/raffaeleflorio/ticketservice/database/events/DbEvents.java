@@ -14,6 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -31,6 +32,7 @@ final class DbEvents implements Events {
   private final Function<UUID, Event> eventFn;
   private final String eventsIdSelectQuery;
   private final Supplier<UUID> newEventIdSupplier;
+  private final Supplier<OffsetDateTime> nowSupplier;
 
   /**
    * Builds events
@@ -44,6 +46,7 @@ final class DbEvents implements Events {
       dataSource,
       id -> new DbEvent(id, dataSource),
       "SELECT ID FROM EVENTS",
+      () -> OffsetDateTime.now(ZoneOffset.UTC),
       UUID::randomUUID
     );
   }
@@ -52,11 +55,13 @@ final class DbEvents implements Events {
     final DataSource dataSource,
     final Function<UUID, Event> eventFn,
     final String eventsIdSelectQuery,
+    final Supplier<OffsetDateTime> nowSupplier,
     final Supplier<UUID> newEventIdSupplier
   ) {
     this.dataSource = dataSource;
     this.eventFn = eventFn;
     this.eventsIdSelectQuery = eventsIdSelectQuery;
+    this.nowSupplier = nowSupplier;
     this.newEventIdSupplier = newEventIdSupplier;
   }
 
@@ -67,8 +72,8 @@ final class DbEvents implements Events {
       var preparedStatement = this.preparedStatement(
         connection,
         "INSERT INTO EVENTS",
-        "(ID, EXTERNAL_ID, ORIGIN, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS)",
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "(ID, EXTERNAL_ID, ORIGIN, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, CREATION_TIMESTAMP)",
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
       )
     ) {
       return this.event(preparedStatement, event);
@@ -94,6 +99,7 @@ final class DbEvents implements Events {
     preparedStatement.setString(6, event.getString("poster"));
     preparedStatement.setObject(7, OffsetDateTime.parse(event.getString("date")));
     preparedStatement.setInt(8, event.getInt("maxTickets"));
+    preparedStatement.setObject(9, this.nowSupplier.get());
     if (preparedStatement.executeUpdate() > 0) {
       return Uni.createFrom().item(this.eventFn.apply(id));
     } else {
@@ -161,6 +167,7 @@ final class DbEvents implements Events {
       this.dataSource,
       this.eventFn,
       "SELECT ID FROM EVENTS WHERE EVENT_TIMESTAMP >= NOW()",
+      this.nowSupplier,
       this.newEventIdSupplier
     );
   }
