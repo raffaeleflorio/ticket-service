@@ -25,8 +25,4 @@ public interface Butter {
     @PathParam("page_type_slug") String pageTypeSlug,
     @PathParam("page_slug") String pageSlug
   );
-
-  @POST
-  @Path("/content/")
-  Uni<JsonObject> createCollectionItem(JsonObject body);
 }
