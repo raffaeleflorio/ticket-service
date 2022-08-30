@@ -1,7 +1,6 @@
 package io.github.raffaeleflorio.ticketservice.database.events;
 
 import io.github.raffaeleflorio.ticketservice.Event;
-import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 
 import javax.json.Json;
@@ -105,29 +104,6 @@ final class DbEvent implements Event {
       return Uni.createFrom().failure(new RuntimeException("Unable to book a ticket"));
     } catch (SQLException e) {
       return Uni.createFrom().failure(new RuntimeException(e));
-    }
-  }
-
-  @Override
-  public Multi<String> externalId(final String origin) {
-    try (
-      var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(
-        connection,
-        "SELECT EXTERNAL_ID",
-        "FROM EVENTS",
-        "WHERE ID=? AND ORIGIN=?"
-      )
-    ) {
-      preparedStatement.setObject(1, this.id);
-      preparedStatement.setObject(2, origin);
-      var rs = preparedStatement.executeQuery();
-      if (rs.next()) {
-        return Multi.createFrom().item(rs.getString("EXTERNAL_ID"));
-      }
-      return Multi.createFrom().empty();
-    } catch (SQLException e) {
-      return Multi.createFrom().failure(new RuntimeException(e));
     }
   }
 }
