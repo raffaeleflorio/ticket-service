@@ -29,8 +29,8 @@ final class DbEvents implements Events {
 
   private final DataSource dataSource;
   private final Function<UUID, Event> eventFn;
-  private final String eventsSelectQuery;
-  private final Supplier<UUID> eventIdSupplier;
+  private final String eventsIdSelectQuery;
+  private final Supplier<UUID> newEventIdSupplier;
 
   /**
    * Builds events
@@ -52,12 +52,12 @@ final class DbEvents implements Events {
     final DataSource dataSource,
     final Function<UUID, Event> eventFn,
     final String eventsIdSelectQuery,
-    final Supplier<UUID> eventIdSupplier
+    final Supplier<UUID> newEventIdSupplier
   ) {
     this.dataSource = dataSource;
     this.eventFn = eventFn;
-    this.eventsSelectQuery = eventsIdSelectQuery;
-    this.eventIdSupplier = eventIdSupplier;
+    this.eventsIdSelectQuery = eventsIdSelectQuery;
+    this.newEventIdSupplier = newEventIdSupplier;
   }
 
   @Override
@@ -85,7 +85,7 @@ final class DbEvents implements Events {
   }
 
   private Uni<Event> event(final PreparedStatement preparedStatement, final JsonObject event) throws SQLException {
-    var id = this.eventIdSupplier.get();
+    var id = this.newEventIdSupplier.get();
     preparedStatement.setObject(1, id);
     preparedStatement.setString(2, event.getString("externalId"));
     preparedStatement.setString(3, event.getString("origin"));
@@ -105,7 +105,7 @@ final class DbEvents implements Events {
   public Uni<JsonObject> asJsonObject() {
     try (
       var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(connection, this.eventsSelectQuery)
+      var preparedStatement = this.preparedStatement(connection, this.eventsIdSelectQuery)
     ) {
       return this.asJsonArray(preparedStatement.executeQuery())
         .onItem().transform(jsonArray -> Json.createObjectBuilder().add("events", jsonArray))
@@ -136,8 +136,8 @@ final class DbEvents implements Events {
       var connection = this.dataSource.getConnection();
       var preparedStatement = this.preparedStatement(
         connection,
-        this.eventsSelectQuery,
-        this.eventsSelectQuery.contains(" WHERE ") ? "AND ID=?" : "WHERE ID=?"
+        this.eventsIdSelectQuery,
+        this.eventsIdSelectQuery.contains(" WHERE ") ? "AND ID=?" : "WHERE ID=?"
       )
     ) {
       preparedStatement.setObject(1, id);
@@ -161,7 +161,7 @@ final class DbEvents implements Events {
       this.dataSource,
       this.eventFn,
       "SELECT ID FROM EVENTS WHERE EVENT_TIMESTAMP >= NOW()",
-      this.eventIdSupplier
+      this.newEventIdSupplier
     );
   }
 }

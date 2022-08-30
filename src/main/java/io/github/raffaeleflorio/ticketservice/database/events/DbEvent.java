@@ -22,7 +22,7 @@ final class DbEvent implements Event {
 
   private final UUID id;
   private final DataSource dataSource;
-  private final Supplier<UUID> ticketIdSupplier;
+  private final Supplier<UUID> newTicketIdSupplier;
 
   /**
    * Builds an event
@@ -37,11 +37,11 @@ final class DbEvent implements Event {
   DbEvent(
     final UUID id,
     final DataSource dataSource,
-    final Supplier<UUID> ticketIdSupplier
+    final Supplier<UUID> newTicketIdSupplier
   ) {
     this.id = id;
     this.dataSource = dataSource;
-    this.ticketIdSupplier = ticketIdSupplier;
+    this.newTicketIdSupplier = newTicketIdSupplier;
   }
 
   @Override
@@ -68,7 +68,6 @@ final class DbEvent implements Event {
   ) throws SQLException {
     return connection.prepareStatement(String.join(" ", preparedStatementPieces));
   }
-
 
   private Uni<JsonObject> asJsonObject(final ResultSet rs) throws SQLException {
     if (rs.next()) {
@@ -99,7 +98,7 @@ final class DbEvent implements Event {
     ) {
       preparedStatement.setObject(1, this.id);
       if (preparedStatement.executeUpdate() > 0) {
-        return Uni.createFrom().item(this.ticketIdSupplier.get());
+        return Uni.createFrom().item(this.newTicketIdSupplier.get());
       }
       return Uni.createFrom().failure(new RuntimeException("Unable to book a ticket"));
     } catch (SQLException e) {
