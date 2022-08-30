@@ -1,10 +1,8 @@
 package io.github.raffaeleflorio.ticketservice.database.events;
 
-import io.github.raffaeleflorio.ticketservice.BookedTickets;
 import io.github.raffaeleflorio.ticketservice.Event;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.tuples.Tuple2;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -25,29 +23,25 @@ final class DbEvent implements Event {
 
   private final UUID id;
   private final DataSource dataSource;
-  private final BookedTickets bookedTickets;
   private final Supplier<UUID> ticketIdSupplier;
 
   /**
    * Builds an event
    *
-   * @param id            The event's id
-   * @param dataSource    The datasource
-   * @param bookedTickets The sold tickets
+   * @param id         The event's id
+   * @param dataSource The datasource
    */
-  DbEvent(final UUID id, final DataSource dataSource, final BookedTickets bookedTickets) {
-    this(id, dataSource, bookedTickets, UUID::randomUUID);
+  DbEvent(final UUID id, final DataSource dataSource) {
+    this(id, dataSource, UUID::randomUUID);
   }
 
   DbEvent(
     final UUID id,
     final DataSource dataSource,
-    final BookedTickets bookedTickets,
     final Supplier<UUID> ticketIdSupplier
   ) {
     this.id = id;
     this.dataSource = dataSource;
-    this.bookedTickets = bookedTickets;
     this.ticketIdSupplier = ticketIdSupplier;
   }
 
@@ -106,11 +100,7 @@ final class DbEvent implements Event {
     ) {
       preparedStatement.setObject(1, this.id);
       if (preparedStatement.executeUpdate() > 0) {
-        var ticketId = this.ticketIdSupplier.get();
-        return Uni.combine().all().unis(
-          this.bookedTickets.add(ticketId, participant, this.id),
-          Uni.createFrom().item(ticketId)
-        ).asTuple().onItem().transform(Tuple2::getItem2);
+        return Uni.createFrom().item(this.ticketIdSupplier.get());
       }
       return Uni.createFrom().failure(new RuntimeException("Unable to book a ticket"));
     } catch (SQLException e) {

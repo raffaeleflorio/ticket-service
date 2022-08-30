@@ -1,6 +1,5 @@
 package io.github.raffaeleflorio.ticketservice.database.events;
 
-import io.github.raffaeleflorio.ticketservice.BookedTickets;
 import io.github.raffaeleflorio.ticketservice.Event;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.smallrye.mutiny.Multi;
@@ -36,15 +35,14 @@ final class DbEvents implements Events {
   /**
    * Builds events
    *
-   * @param dataSource    The datasource
-   * @param bookedTickets The booked tickets
+   * @param dataSource The datasource
    * @author Raffaele Florio (raffaeleflorio@protonmail.com)
    */
   @Inject
-  DbEvents(final DataSource dataSource, final BookedTickets bookedTickets) {
+  DbEvents(final DataSource dataSource) {
     this(
       dataSource,
-      id -> new DbEvent(id, dataSource, bookedTickets),
+      id -> new DbEvent(id, dataSource),
       "SELECT ID FROM EVENTS",
       UUID::randomUUID
     );
@@ -107,7 +105,7 @@ final class DbEvents implements Events {
   public Uni<JsonObject> asJsonObject() {
     try (
       var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(connection, this.eventsSelectQuery);
+      var preparedStatement = this.preparedStatement(connection, this.eventsSelectQuery)
     ) {
       return this.asJsonArray(preparedStatement.executeQuery())
         .onItem().transform(jsonArray -> Json.createObjectBuilder().add("events", jsonArray))
