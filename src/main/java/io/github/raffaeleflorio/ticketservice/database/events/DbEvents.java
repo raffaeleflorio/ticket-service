@@ -44,7 +44,7 @@ final class DbEvents implements Events {
   DbEvents(final DataSource dataSource) {
     this(
       dataSource,
-      id -> new DbEvent(id, dataSource),
+      id -> new DbEvent(id, dataSource, () -> OffsetDateTime.now(ZoneOffset.UTC)),
       "SELECT ID FROM EVENTS",
       () -> OffsetDateTime.now(ZoneOffset.UTC),
       UUID::randomUUID
