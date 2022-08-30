@@ -14,7 +14,7 @@ import javax.ws.rs.*;
  * @see <a href="https://buttercms.com/docs/api/">API documentation</a>
  */
 @RegisterRestClient(baseUri = "https://api.buttercms.com/v2")
-@RegisterClientHeaders(WriteTokenApiHeadersFactory.class)
+@RegisterClientHeaders(ApiTokenHeadersFactory.class)
 @Consumes("application/json")
 @Produces("application/json")
 public interface Butter {

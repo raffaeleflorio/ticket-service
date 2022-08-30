@@ -13,16 +13,16 @@ import javax.ws.rs.core.MultivaluedMap;
  * @author Raffaele Florio (raffaeleflorio@protonmail.com)
  */
 @ApplicationScoped
-final class WriteTokenApiHeadersFactory implements ClientHeadersFactory {
+final class ApiTokenHeadersFactory implements ClientHeadersFactory {
 
   private final String token;
 
   /**
    * Builds the headers factory
    *
-   * @param token The write token
+   * @param token The token
    */
-  public WriteTokenApiHeadersFactory(@ConfigProperty(name = "buttercms-api.token") final String token) {
+  public ApiTokenHeadersFactory(@ConfigProperty(name = "buttercms-api.token") final String token) {
     this.token = token;
   }
 
