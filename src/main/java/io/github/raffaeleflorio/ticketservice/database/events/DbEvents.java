@@ -2,23 +2,23 @@ package io.github.raffaeleflorio.ticketservice.database.events;
 
 import io.github.raffaeleflorio.ticketservice.Event;
 import io.github.raffaeleflorio.ticketservice.Events;
+import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.ConnectionFactory;
+import io.r2dbc.spi.Result;
+import io.r2dbc.spi.Statement;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.json.*;
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 /**
  * {@link Events} backed by a relational database
@@ -28,147 +28,110 @@ import java.util.stream.Stream;
 @ApplicationScoped
 final class DbEvents implements Events {
 
-  private final DataSource dataSource;
-  private final Function<UUID, Event> eventFn;
+  private final ConnectionFactory connectionFactory;
   private final String eventsIdSelectQuery;
+  private final Function<UUID, Event> eventFn;
   private final Supplier<UUID> newEventIdSupplier;
   private final Supplier<OffsetDateTime> nowSupplier;
 
   /**
    * Builds events
    *
-   * @param dataSource The datasource
+   * @param connectionFactory The connection factory
    * @author Raffaele Florio (raffaeleflorio@protonmail.com)
    */
   @Inject
-  DbEvents(final DataSource dataSource) {
+  DbEvents(final ConnectionFactory connectionFactory) {
     this(
-      dataSource,
-      id -> new DbEvent(id, dataSource, () -> OffsetDateTime.now(ZoneOffset.UTC)),
+      connectionFactory,
       "SELECT ID FROM EVENTS",
-      () -> OffsetDateTime.now(ZoneOffset.UTC),
-      UUID::randomUUID
+      id -> new DbEvent(id, connectionFactory, () -> OffsetDateTime.now(ZoneOffset.UTC)),
+      UUID::randomUUID,
+      () -> OffsetDateTime.now(ZoneOffset.UTC)
     );
   }
 
   DbEvents(
-    final DataSource dataSource,
-    final Function<UUID, Event> eventFn,
+    final ConnectionFactory connectionFactory,
     final String eventsIdSelectQuery,
-    final Supplier<OffsetDateTime> nowSupplier,
-    final Supplier<UUID> newEventIdSupplier
+    final Function<UUID, Event> eventFn,
+    final Supplier<UUID> newEventIdSupplier,
+    final Supplier<OffsetDateTime> nowSupplier
   ) {
-    this.dataSource = dataSource;
-    this.eventFn = eventFn;
+    this.connectionFactory = connectionFactory;
     this.eventsIdSelectQuery = eventsIdSelectQuery;
-    this.nowSupplier = nowSupplier;
+    this.eventFn = eventFn;
     this.newEventIdSupplier = newEventIdSupplier;
+    this.nowSupplier = nowSupplier;
   }
 
   @Override
   public Uni<Event> event(final JsonObject event) {
-    try (
-      var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(
-        connection,
+    var id = this.newEventIdSupplier.get();
+    return this.statement(
         "INSERT INTO EVENTS",
         "(ID, EXTERNAL_ID, ORIGIN, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, CREATION_TIMESTAMP)",
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
       )
-    ) {
-      return this.event(preparedStatement, event);
-    } catch (SQLException e) {
-      return Uni.createFrom().failure(new RuntimeException(e));
-    }
+      .onItem().transformToMulti(statement -> statement
+        .bind("$1", id)
+        .bind("$2", event.getString("externalId"))
+        .bind("$3", event.getString("origin"))
+        .bind("$4", event.getString("title"))
+        .bind("$5", event.getString("description"))
+        .bind("$6", event.getString("poster"))
+        .bind("$7", OffsetDateTime.parse(event.getString("date")))
+        .bind("$8", event.getInt("maxTickets"))
+        .bind("$9", this.nowSupplier.get())
+        .execute()
+      )
+      .onItem().transformToMultiAndMerge(Result::getRowsUpdated)
+      .filter(rowsUpdated -> rowsUpdated > 0)
+      .onItem().transform(rowsUpdated -> id)
+      .onItem().transform(this.eventFn)
+      .onCompletion().ifEmpty().failWith(new RuntimeException("Unable to add an event"))
+      .toUni();
   }
 
-  private PreparedStatement preparedStatement(
-    final Connection connection,
-    final String... preparedStatementPieces
-  ) throws SQLException {
-    return connection.prepareStatement(String.join(" ", preparedStatementPieces));
+  private Uni<Statement> statement(final String... pieces) {
+    return this.connection()
+      .onItem().transform(connection -> connection.createStatement(String.join(" ", pieces)));
   }
 
-  private Uni<Event> event(final PreparedStatement preparedStatement, final JsonObject event) throws SQLException {
-    var id = this.newEventIdSupplier.get();
-    preparedStatement.setObject(1, id);
-    preparedStatement.setString(2, event.getString("externalId"));
-    preparedStatement.setString(3, event.getString("origin"));
-    preparedStatement.setString(4, event.getString("title"));
-    preparedStatement.setString(5, event.getString("description"));
-    preparedStatement.setString(6, event.getString("poster"));
-    preparedStatement.setObject(7, OffsetDateTime.parse(event.getString("date")));
-    preparedStatement.setInt(8, event.getInt("maxTickets"));
-    preparedStatement.setObject(9, this.nowSupplier.get());
-    if (preparedStatement.executeUpdate() > 0) {
-      return Uni.createFrom().item(this.eventFn.apply(id));
-    } else {
-      return Uni.createFrom().failure(new RuntimeException("Unable to add an event"));
-    }
-  }
-
-  @Override
-  public Uni<JsonObject> asJsonObject() {
-    try (
-      var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(connection, this.eventsIdSelectQuery)
-    ) {
-      return this.asJsonArray(preparedStatement.executeQuery())
-        .onItem().transform(jsonArray -> Json.createObjectBuilder().add("events", jsonArray))
-        .onItem().transform(JsonObjectBuilder::build);
-    } catch (SQLException e) {
-      return Uni.createFrom().failure(new RuntimeException(e));
-    }
-  }
-
-  private Uni<JsonArray> asJsonArray(final ResultSet rs) throws SQLException {
-    return this.events(rs)
-      .onItem().transformToUniAndMerge(Event::asJsonObject)
-      .collect().in(Json::createArrayBuilder, JsonArrayBuilder::add)
-      .onItem().transform(JsonArrayBuilder::build);
-  }
-
-  private Multi<Event> events(final ResultSet rs) throws SQLException {
-    var stream = Stream.<Event>builder();
-    while (rs.next()) {
-      stream.add(this.eventFn.apply(rs.getObject("ID", UUID.class)));
-    }
-    return Multi.createFrom().items(stream.build());
+  private Uni<Connection> connection() {
+    return Uni.createFrom().publisher(this.connectionFactory.create());
   }
 
   @Override
   public Multi<Event> event(final UUID id) {
-    try (
-      var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(
-        connection,
+    return this.statement(
         this.eventsIdSelectQuery,
-        this.eventsIdSelectQuery.contains(" WHERE ") ? "AND ID=?" : "WHERE ID=?"
+        this.eventsIdSelectQuery.contains(" WHERE ") ? "AND ID = $1" : "WHERE ID = $1"
       )
-    ) {
-      preparedStatement.setObject(1, id);
-      return this.event(preparedStatement.executeQuery());
-    } catch (SQLException e) {
-      return Multi.createFrom().failure(new RuntimeException(e));
-    }
-  }
-
-  private Multi<Event> event(final ResultSet rs) throws SQLException {
-    if (rs.next()) {
-      return Multi.createFrom().item(this.eventFn.apply(rs.getObject("ID", UUID.class)));
-    } else {
-      return Multi.createFrom().empty();
-    }
+      .onItem().transformToMulti(statement -> statement.bind("$1", id).execute())
+      .onItem().transformToMultiAndMerge(result -> result.map((row, rowMetadata) -> row.get("ID", UUID.class)))
+      .onItem().transform(this.eventFn);
   }
 
   @Override
   public Events available() {
     return new DbEvents(
-      this.dataSource,
-      this.eventFn,
+      this.connectionFactory,
       "SELECT ID FROM EVENTS WHERE EVENT_TIMESTAMP >= NOW()",
-      this.nowSupplier,
-      this.newEventIdSupplier
+      this.eventFn,
+      this.newEventIdSupplier,
+      this.nowSupplier
     );
+  }
+
+  @Override
+  public Uni<JsonObject> asJsonObject() {
+    return this.statement(this.eventsIdSelectQuery)
+      .onItem().transformToMulti(Statement::execute)
+      .onItem().transformToMultiAndMerge(result -> result.map((row, rowMetadata) -> row.get("ID", UUID.class)))
+      .onItem().transform(this.eventFn)
+      .onItem().transformToUniAndMerge(Event::asJsonObject)
+      .collect().in(Json::createArrayBuilder, JsonArrayBuilder::add)
+      .onItem().transform(events -> Json.createObjectBuilder().add("events", events).build());
   }
 }

@@ -1,15 +1,16 @@
 package io.github.raffaeleflorio.ticketservice.database.events;
 
 import io.github.raffaeleflorio.ticketservice.Event;
+import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.ConnectionFactory;
+import io.r2dbc.spi.Result;
+import io.r2dbc.spi.Statement;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import org.reactivestreams.Publisher;
 
 import javax.json.Json;
 import javax.json.JsonObject;
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -22,114 +23,117 @@ import java.util.function.Supplier;
 final class DbEvent implements Event {
 
   private final UUID id;
-  private final DataSource dataSource;
-  private final Supplier<OffsetDateTime> nowSupplier;
+  private final ConnectionFactory connectionFactory;
   private final Supplier<UUID> newTicketIdSupplier;
+  private final Supplier<OffsetDateTime> nowSupplier;
 
   /**
    * Builds an event
    *
-   * @param id          The event's id
-   * @param dataSource  The datasource
-   * @param nowSupplier The supplier of now as an {@link OffsetDateTime}
+   * @param id                The event's id
+   * @param connectionFactory The connection factory
+   * @param nowSupplier       The supplier of now as an {@link OffsetDateTime}
    */
-  DbEvent(final UUID id, final DataSource dataSource, final Supplier<OffsetDateTime> nowSupplier) {
-    this(id, dataSource, nowSupplier, UUID::randomUUID);
+  DbEvent(final UUID id, final ConnectionFactory connectionFactory, final Supplier<OffsetDateTime> nowSupplier) {
+    this(
+      id,
+      connectionFactory,
+      UUID::randomUUID,
+      nowSupplier
+    );
   }
 
   DbEvent(
     final UUID id,
-    final DataSource dataSource,
-    final Supplier<OffsetDateTime> nowSupplier,
-    final Supplier<UUID> newTicketIdSupplier
+    final ConnectionFactory connectionFactory,
+    final Supplier<UUID> newTicketIdSupplier,
+    final Supplier<OffsetDateTime> nowSupplier
   ) {
     this.id = id;
-    this.dataSource = dataSource;
-    this.nowSupplier = nowSupplier;
+    this.connectionFactory = connectionFactory;
     this.newTicketIdSupplier = newTicketIdSupplier;
+    this.nowSupplier = nowSupplier;
   }
 
   @Override
   public Uni<JsonObject> asJsonObject() {
-    try (
-      var connection = this.dataSource.getConnection();
-      var preparedStatement = this.preparedStatement(
-        connection,
+    return this.statement(
         "SELECT ID, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, SOLD_TICKETS",
         "FROM EVENTS",
-        "WHERE ID=?"
+        "WHERE ID = $1"
       )
-    ) {
-      preparedStatement.setObject(1, this.id);
-      return this.asJsonObject(preparedStatement.executeQuery());
-    } catch (SQLException e) {
-      return Uni.createFrom().failure(new RuntimeException(e));
-    }
+      .onItem().transformToMulti(statement -> statement.bind("$1", this.id).execute())
+      .onItem().transformToMultiAndMerge(this::asJsonObject)
+      .onCompletion().ifEmpty().failWith(new RuntimeException("Unable to find the event"))
+      .toUni();
   }
 
-  private PreparedStatement preparedStatement(
-    final Connection connection,
-    final String... preparedStatementPieces
-  ) throws SQLException {
-    return connection.prepareStatement(String.join(" ", preparedStatementPieces));
+  private Uni<Statement> statement(final String... pieces) {
+    return this.connection()
+      .onItem().transform(connection -> this.statement(connection, pieces));
   }
 
-  private Uni<JsonObject> asJsonObject(final ResultSet rs) throws SQLException {
-    if (rs.next()) {
-      return Uni.createFrom().item(Json.createObjectBuilder()
-        .add("id", rs.getString("ID"))
-        .add("title", rs.getString("TITLE"))
-        .add("description", rs.getString("DESCRIPTION"))
-        .add("poster", rs.getString("POSTER"))
-        .add("date", rs.getString("EVENT_TIMESTAMP"))
-        .add("availableTickets", rs.getInt("MAX_TICKETS") - rs.getInt("SOLD_TICKETS"))
-        .build()
-      );
-    } else {
-      return Uni.createFrom().failure(new RuntimeException("Unable to fetch the event"));
-    }
+  private Uni<Connection> connection() {
+    return Uni.createFrom().publisher(this.connectionFactory.create());
+  }
+
+  private Statement statement(final Connection connection, final String... pieces) {
+    return connection.createStatement(String.join(" ", pieces));
+  }
+
+  private Publisher<JsonObject> asJsonObject(final Result result) {
+    return result.map((row, rowMetadata) -> Json.createObjectBuilder()
+      .add("id", row.get("ID", UUID.class).toString())
+      .add("title", row.get("TITLE", String.class))
+      .add("description", row.get("DESCRIPTION", String.class))
+      .add("poster", row.get("POSTER", String.class))
+      .add("date", row.get("EVENT_TIMESTAMP", OffsetDateTime.class).toString())
+      .add("availableTickets", row.get("MAX_TICKETS", Integer.class) - row.get("SOLD_TICKETS", Integer.class))
+      .build());
   }
 
   @Override
   public Uni<UUID> ticket(final UUID participant) {
-    try (var connection = this.dataSource.getConnection()) {
-      return this.ticket(participant, connection);
-    } catch (SQLException e) {
-      return Uni.createFrom().failure(new RuntimeException(e));
-    }
+    var ticketId = this.newTicketIdSupplier.get();
+    return this.connection()
+      .onItem().call(connection -> Uni.createFrom().publisher(connection.setAutoCommit(false)))
+      .onItem().call(connection -> Uni.createFrom().publisher(connection.beginTransaction()))
+      .onItem().call(connection ->
+        this.ticket(connection, ticketId, participant)
+          .onItem().call(() -> Uni.createFrom().publisher(connection.commitTransaction()))
+          .onFailure().call(() -> Uni.createFrom().publisher(connection.rollbackTransaction()))
+      )
+      .onItem().ignore().andSwitchTo(Uni.createFrom().item(ticketId));
   }
 
-  private Uni<UUID> ticket(final UUID participant, final Connection connection) throws SQLException {
-    try (
-      var updateSoldTicketsStatement = this.preparedStatement(
+  private Uni<Void> ticket(final Connection connection, final UUID ticketId, final UUID participant) {
+    var updateSoldTicketsStatement = this.statement(
         connection,
         "UPDATE EVENTS",
         "SET SOLD_TICKETS = SOLD_TICKETS + 1",
-        "WHERE ID=? AND SOLD_TICKETS < MAX_TICKETS AND EVENT_TIMESTAMP >= NOW()"
-      );
-      var insertTicketStatement = this.preparedStatement(
+        "WHERE ID = $1 AND SOLD_TICKETS < MAX_TICKETS AND EVENT_TIMESTAMP >= NOW()"
+      )
+      .bind("$1", this.id);
+    var insertTicketStatement = this.statement(
         connection,
         "INSERT INTO TICKETS",
         "(ID, EVENT_ID, PARTICIPANT_ID, CREATION_TIMESTAMP)",
-        "VALUES (?, ?, ?, ?)"
+        "VALUES ($1, $2, $3, $4)"
       )
-    ) {
-      connection.setAutoCommit(false);
-      var ticketId = this.newTicketIdSupplier.get();
-      updateSoldTicketsStatement.setObject(1, this.id);
-      insertTicketStatement.setObject(1, ticketId);
-      insertTicketStatement.setObject(2, this.id);
-      insertTicketStatement.setObject(3, participant);
-      insertTicketStatement.setObject(4, this.nowSupplier.get());
-      if (updateSoldTicketsStatement.executeUpdate() > 0 && insertTicketStatement.executeUpdate() > 0) {
-        connection.commit();
-        return Uni.createFrom().item(ticketId);
-      }
-      connection.rollback();
-      return Uni.createFrom().failure(new RuntimeException("Unable to book a ticket"));
-    } catch (SQLException e) {
-      connection.rollback();
-      return Uni.createFrom().failure(new RuntimeException(e));
-    }
+      .bind("$1", ticketId)
+      .bind("$2", this.id)
+      .bind("$3", participant)
+      .bind("$4", this.nowSupplier.get());
+    return Multi.createBy().combining().streams(
+        Multi.createFrom().publisher(updateSoldTicketsStatement.execute())
+          .onItem().transformToMultiAndMerge(Result::getRowsUpdated),
+        Multi.createFrom().publisher(insertTicketStatement.execute())
+          .onItem().transformToMultiAndMerge(Result::getRowsUpdated)
+      )
+      .asTuple()
+      .filter(rowsUpdated -> rowsUpdated.getItem1() > 0 && rowsUpdated.getItem2() > 0)
+      .onCompletion().ifEmpty().failWith(new RuntimeException("Unable to book a ticket"))
+      .onItem().ignore()
+      .toUni();
   }
 }
