@@ -58,7 +58,7 @@ final class DbEvent implements Event {
   @Override
   public Uni<JsonObject> asJsonObject() {
     return this.statement(
-        "SELECT ID, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, MAX_TICKETS, SOLD_TICKETS",
+        "SELECT ID, TITLE, DESCRIPTION, POSTER, EVENT_TIMESTAMP, (MAX_TICKETS - SOLD_TICKETS) AS AVAILABLE_TICKETS",
         "FROM EVENTS",
         "WHERE ID = $1"
       )
@@ -88,7 +88,7 @@ final class DbEvent implements Event {
       .add("description", row.get("DESCRIPTION", String.class))
       .add("poster", row.get("POSTER", String.class))
       .add("date", row.get("EVENT_TIMESTAMP", OffsetDateTime.class).toString())
-      .add("availableTickets", row.get("MAX_TICKETS", Integer.class) - row.get("SOLD_TICKETS", Integer.class))
+      .add("availableTickets", row.get("AVAILABLE_TICKETS", Integer.class))
       .build());
   }
 
