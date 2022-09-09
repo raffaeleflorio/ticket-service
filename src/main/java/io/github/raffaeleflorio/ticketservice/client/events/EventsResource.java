@@ -18,8 +18,8 @@ public final class EventsResource {
   }
 
   @GET
-  public Uni<JsonObject> availableEvents() {
-    return this.events.available().asJsonObject();
+  public Uni<JsonObject> upcomingEvents() {
+    return this.events.upcoming().asJsonObject();
   }
 
   @POST
@@ -28,7 +28,7 @@ public final class EventsResource {
     @PathParam("id") final UUID id,
     @HeaderParam("participant") final UUID participant
   ) {
-    return this.events.available().event(id)
+    return this.events.upcoming().event(id)
       .onItem().transformToUniAndMerge(event -> event.ticket(participant))
       .onItem().transform(ticketId -> RestResponse.<Void>accepted())
       .onFailure().recoverWithItem(() -> RestResponse.status(409))

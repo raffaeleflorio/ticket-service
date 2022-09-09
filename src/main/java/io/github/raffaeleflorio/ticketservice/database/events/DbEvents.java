@@ -114,7 +114,7 @@ final class DbEvents implements Events {
   }
 
   @Override
-  public Events available() {
+  public Events upcoming() {
     return new DbEvents(
       this.connectionFactory,
       "SELECT ID FROM EVENTS WHERE EVENT_TIMESTAMP >= NOW()",

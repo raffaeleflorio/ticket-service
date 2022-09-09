@@ -40,11 +40,11 @@ public interface Events {
   Multi<Event> event(UUID id);
 
   /**
-   * Filters out unavailable events
+   * Filters out gone events
    *
-   * @return All available events
+   * @return All upcoming events
    */
-  Events available();
+  Events upcoming();
 
   /**
    * Emits its {@link JsonObject} representation
