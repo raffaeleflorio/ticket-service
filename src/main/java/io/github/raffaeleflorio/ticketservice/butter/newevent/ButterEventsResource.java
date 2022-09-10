@@ -1,8 +1,8 @@
 package io.github.raffaeleflorio.ticketservice.butter.newevent;
 
-import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.github.raffaeleflorio.ticketservice.NewEvent;
+import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.smallrye.mutiny.Uni;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
