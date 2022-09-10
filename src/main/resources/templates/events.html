@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="/webjars/bulma/css/bulma.min.css"/>
+  <link rel="stylesheet" href="/events.css"/>
+  <title>Upcoming events</title>
+</head>
+<body class="px-6 py-3 has-text-centered">
+<h1 class="title">Upcoming events</h1>
+<main class="columns is-centered is-vcentered is-multiline">
+  {#each events}
+  <article class="column is-one-third-desktop is-half-tablet">
+    <div class="box">
+      <header class="block">
+        <h2 class="subtitle">{it getString 'title'}</h2>
+        <figure class="image is-3by2">
+          <img src="{it getString 'poster'}" alt="The event poster"/>
+        </figure>
+      </header>
+      <section class="block">
+        <div class="content">
+          <p>{it getString 'description'}</p>
+        </div>
+        <div class="level is-mobile">
+          <div class="level-left">
+            <span class="level-item">Date:</span>
+          </div>
+          <div class="level-right">
+            <time class="level-item" datetime="{it getOffsetDateTime 'date'}">
+              <strong>{it getOffsetDateTime 'date' format 'MMM d yyyy - E HH:mm'}</strong>
+            </time>
+          </div>
+        </div>
+        <div class="level is-mobile">
+          <div class="level-left">
+            <span class="level-item">Available tickets:</span>
+          </div>
+          <div class="level-right">
+            <span class="level-item"><strong>{it getInt 'availableTickets'}</strong></span>
+          </div>
+        </div>
+        <div class="block">
+          {#if it.getInt('availableTickets') > 0}
+          <button class="button is-primary is-focused is-fullwidth">Book</button>
+          {#else}
+          <button class="button is-danger is-outlined is-fullwidth is-static">Sold out</button>
+          {/if}
+        </div>
+      </section>
+    </div>
+  </article>
+  {#else}
+  <article class="column">
+    Whoops we haven't any upcoming event yet! ☹️
+  </article>
+  {/each}
+</main>
+</body>
+</html>
