@@ -1,8 +1,8 @@
 package io.github.raffaeleflorio.ticketservice.butter.newevent;
 
-import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.github.raffaeleflorio.ticketservice.NewEvent;
+import io.github.raffaeleflorio.ticketservice.butter.Butter;
 import io.smallrye.mutiny.Uni;
 
 import javax.json.JsonObject;
@@ -42,7 +42,16 @@ final class NewEventFromButterWebHook implements NewEvent {
 
   @Override
   public Uni<Void> update(final Events events) {
-    return this.newEventFromButterFn.apply(this.id(), this.butter).update(events);
+    if (this.pageType().equals("event")) {
+      return this.newEventFromButterFn.apply(this.id(), this.butter).update(events);
+    }
+    return Uni.createFrom().voidItem();
+  }
+
+  private String pageType() {
+    return this.notification
+      .getJsonObject("data")
+      .getString("page_type");
   }
 
   private String id() {
