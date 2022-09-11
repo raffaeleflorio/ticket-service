@@ -1,4 +1,4 @@
-<article id="event-{it getString 'id'}" class="event column is-one-third-desktop is-half-tablet">
+<article id="event-{it getString 'id'}" class="column is-one-third-desktop is-half-tablet">
   <div class="box">
     <header class="block">
       <h2 class="subtitle">{it getString 'title'}</h2>
@@ -30,8 +30,7 @@
       </div>
       <div class="block">
         {#if it.getInt('availableTickets') > 0}
-        <button id="book-{it getString 'id'}" class="button is-primary is-focused is-fullwidth" onclick="book('{it getString 'id'}')">
-          Book
+        <button data-event="{it getString 'id'}" class="book-button button is-primary is-focused is-fullwidth">Book
         </button>
         {#else}
         <button class="button is-danger is-outlined is-fullwidth is-static">Sold out</button>

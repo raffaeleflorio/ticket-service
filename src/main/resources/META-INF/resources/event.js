@@ -1,11 +1,19 @@
+import {v4 as uuidv4} from '/webjars/uuid/dist/esm-browser/index.js';
+
+const domParser = new DOMParser();
+
+document.querySelectorAll('.book-button').forEach(addBookButtonEventListener);
+
+function addBookButtonEventListener(bookButton) {
+  bookButton.addEventListener('click', e => book(e.target.dataset.event));
+}
+
 function book(id) {
-  const event = document.querySelector(`#event-${id}`);
-  const button = event.querySelector(`#book-${id}`);
-  button.classList.add('is-loading');
+  document.querySelector(`#event-${id} .book-button`).classList.add('is-loading');
   fetch(`/events/${id}/tickets`, {
       method: 'POST',
       headers: {
-        participant: uuid.v4()
+        participant: uuidv4()
       }
     })
     .then(response => {
@@ -21,18 +29,22 @@ function book(id) {
       console.error(error);
       alert('Unable to book the ticket!')
     })
-    .then(() => hydrate(id))
-    .finally(() => button.classList.remove('is-loading'));
+    .then(() => hydrate(id));
 }
 
 function hydrate(id) {
   eventAsElement(id)
-    .then(hydrated => document.querySelector(`#event-${id}`).replaceWith(hydrated));
+    .then(hydrated => document.querySelector(`#event-${id}`).replaceWith(hydrated))
+    .then(() => {
+      const bookButton = document.querySelector(`#event-${id} .book-button`);
+      if (bookButton) {
+        addBookButtonEventListener(bookButton);
+      }
+    });
 }
 
 function eventAsElement(id) {
-  return eventAsDocument(id)
-    .then(document => document.querySelector(`#event-${id}`));
+  return eventAsDocument(id).then(document => document.querySelector(`#event-${id}`));
 }
 
 function eventAsDocument(id) {
@@ -47,5 +59,9 @@ function eventAsDocument(id) {
     }
     throw new Error(`Unable to fetch event. The server returned ${response.status}`)
   })
-  .then(text => new DOMParser().parseFromString(text, 'text/html'))
+  .then(text => domParser.parseFromString(text, 'text/html'))
+}
+
+export default {
+  book
 }
