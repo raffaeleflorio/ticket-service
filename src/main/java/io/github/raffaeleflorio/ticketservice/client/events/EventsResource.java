@@ -1,5 +1,6 @@
 package io.github.raffaeleflorio.ticketservice.client.events;
 
+import io.github.raffaeleflorio.ticketservice.Event;
 import io.github.raffaeleflorio.ticketservice.Events;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
@@ -17,10 +18,16 @@ public final class EventsResource {
 
   private final Events events;
   private final Template eventsHTMLTemplate;
+  private final Template eventHTMLTemplate;
 
-  public EventsResource(final Events events, @Location("events.html") final Template eventsHTMLTemplate) {
+  public EventsResource(
+    final Events events,
+    @Location("client/events.html") final Template eventsHTMLTemplate,
+    @Location("client/event.html") final Template eventHTMLTemplate
+  ) {
     this.events = events;
     this.eventsHTMLTemplate = eventsHTMLTemplate;
+    this.eventHTMLTemplate = eventHTMLTemplate;
   }
 
   @GET
@@ -34,6 +41,19 @@ public final class EventsResource {
   public Uni<TemplateInstance> upcomingEventsAsHtml() {
     return this.events.upcoming().asJsonObject()
       .onItem().transform(this.eventsHTMLTemplate::data);
+  }
+
+
+  @GET
+  @Path("{id}")
+  @Produces(MediaType.TEXT_HTML)
+  public Uni<RestResponse<TemplateInstance>> eventAsHtmlFragment(@PathParam("id") final UUID id) {
+    return this.events.event(id)
+      .onItem().transformToUniAndMerge(Event::asJsonObject)
+      .onItem().transform(this.eventHTMLTemplate::data)
+      .onItem().transform(RestResponse::ok)
+      .onCompletion().ifEmpty().continueWith(RestResponse.notFound())
+      .toUni();
   }
 
   @POST
