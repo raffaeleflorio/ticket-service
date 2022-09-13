@@ -10,13 +10,13 @@
 <body class="px-6 py-3 has-text-centered">
 <h1 class="title">Upcoming events</h1>
 <main class="columns is-centered is-vcentered is-multiline">
-  {#each events}
-  {#event_html this.it _isolated/}
+  {#for event in events}
+  {#event_html event _isolated/}
   {#else}
   <article class="column">
     Whoops we haven't any upcoming event yet! ☹️
   </article>
-  {/each}
+  {/for}
 </main>
 </body>
 </html>
