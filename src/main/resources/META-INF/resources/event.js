@@ -2,14 +2,14 @@ import {v4 as uuidv4} from '/webjars/uuid/dist/esm-browser/index.js';
 
 const domParser = new DOMParser();
 
-document.querySelectorAll('.book-button').forEach(addBookButtonEventListener);
+document.querySelectorAll('.js-book-button').forEach(addBookButtonEventListener);
 
 function addBookButtonEventListener(bookButton) {
   bookButton.addEventListener('click', e => book(e.target.dataset.event));
 }
 
 function book(id) {
-  document.querySelector(`#event-${id} .book-button`).classList.add('is-loading');
+  document.querySelector(`#event-${id} .js-book-button`).classList.add('is-loading');
   fetch(`/events/${id}/tickets`, {
       method: 'POST',
       headers: {
@@ -36,7 +36,7 @@ function hydrate(id) {
   eventAsElement(id)
     .then(hydrated => document.querySelector(`#event-${id}`).replaceWith(hydrated))
     .then(() => {
-      const bookButton = document.querySelector(`#event-${id} .book-button`);
+      const bookButton = document.querySelector(`#event-${id} .js-book-button`);
       if (bookButton) {
         addBookButtonEventListener(bookButton);
       }

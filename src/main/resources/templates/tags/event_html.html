@@ -30,7 +30,7 @@
       </div>
       <div class="block">
         {#if it.getInt('availableTickets') > 0}
-        <button data-event="{it getString 'id'}" class="book-button button is-primary is-focused is-fullwidth">Book
+        <button data-event="{it getString 'id'}" class="button is-primary is-focused is-fullwidth js-book-button ">Book
         </button>
         {#else}
         <button class="button is-danger is-outlined is-fullwidth is-static">Sold out</button>
